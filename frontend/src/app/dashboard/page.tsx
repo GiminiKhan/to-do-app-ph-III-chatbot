@@ -200,7 +200,7 @@ export default function Dashboard() {
           }).sort((a, b) => {
             if (sortBy === "Newest") {
               // Sort by creation date (assuming created_at field exists and is in ISO format)
-              return new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0);
+              return new Date(b.created_at || b.updated_at || 0).getTime() - new Date(a.created_at || a.updated_at || 0).getTime();
             } else if (sortBy === "Priority") {
               // Define priority order: High > Medium > Low > Others
               const priorityOrder = { "high": 3, "medium": 2, "low": 1 };
@@ -209,7 +209,7 @@ export default function Dashboard() {
 
               // If priorities are the same, sort by creation date
               if (aPriorityValue === bPriorityValue) {
-                return new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0);
+                return new Date(b.created_at || b.updated_at || 0).getTime() - new Date(a.created_at || a.updated_at || 0).getTime();
               }
               return bPriorityValue - aPriorityValue; // Higher priority first
             }
