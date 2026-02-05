@@ -119,3 +119,7 @@ pip-delete-this-directory.txt
 .tox
 .coverage.xml
 .pytest_cache
+# Custom Database and Migrations
+backend/database.db
+*.db
+backend/alembic/
