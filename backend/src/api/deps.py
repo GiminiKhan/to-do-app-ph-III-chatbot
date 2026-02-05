@@ -2,10 +2,11 @@
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
-from ..core.database import get_session
+from ..core.database import get_async_session
 from ..models.user import User
 from ..core.security import verify_token
 from ..core.exceptions import InvalidCredentialsException
@@ -14,9 +15,9 @@ from ..core.exceptions import InvalidCredentialsException
 security = HTTPBearer()
 
 
-def get_current_user(
+async def get_current_user(
     token_credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> User:
     """
     Get current user from token.
@@ -50,9 +51,10 @@ def get_current_user(
     except Exception:
         raise credentials_exception
 
-    # Fetch the user from the database
+    # Fetch the user from the database using async session
     statement = select(User).where(User.id == user_uuid)
-    user = db.exec(statement).first()
+    result = await db.execute(statement)
+    user = result.scalar_one_or_none()
 
     if user is None:
         raise credentials_exception
@@ -60,7 +62,7 @@ def get_current_user(
     return user
 
 
-def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Get current active user.
 

@@ -1,0 +1,491 @@
+openapi: 3.0.3
+info:
+  title: To-Do Management API
+  description: API for managing to-do items with user isolation
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+paths:
+  /api/{user_id}/tasks:
+    get:
+      summary: Get all tasks for a user
+      description: Retrieve all to-do items for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose tasks to retrieve
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter tasks by status
+          schema:
+            type: string
+            enum: [pending, in_progress, completed]
+        - name: priority
+          in: query
+          description: Filter tasks by priority
+          schema:
+            type: string
+            enum: [low, medium, high, urgent]
+        - name: project_id
+          in: query
+          description: Filter tasks by project ID
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Number of tasks to return
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: Number of tasks to skip
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response with tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user
+        '404':
+          description: User not found
+      security:
+        - bearerAuth: []
+
+    post:
+      summary: Create a new task
+      description: Create a new to-do item for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user for whom to create the task
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTodoRequest'
+      responses:
+        '200':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request data
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user
+      security:
+        - bearerAuth: []
+
+  /api/{user_id}/tasks/{task_id}:
+    get:
+      summary: Get a specific task
+      description: Retrieve a specific to-do item for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose task to retrieve
+          schema:
+            type: string
+            format: uuid
+        - name: task_id
+          in: path
+          required: true
+          description: UUID of the task to retrieve
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user or task doesn't belong to user
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    put:
+      summary: Update a task completely
+      description: Update all fields of a specific to-do item for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose task to update
+          schema:
+            type: string
+            format: uuid
+        - name: task_id
+          in: path
+          required: true
+          description: UUID of the task to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTodoRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request data
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user or task doesn't belong to user
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    patch:
+      summary: Update a task partially
+      description: Update some fields of a specific to-do item for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose task to update
+          schema:
+            type: string
+            format: uuid
+        - name: task_id
+          in: path
+          required: true
+          description: UUID of the task to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTodoRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid request data
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user or task doesn't belong to user
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+    delete:
+      summary: Delete a task
+      description: Remove a specific to-do item for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose task to delete
+          schema:
+            type: string
+            format: uuid
+        - name: task_id
+          in: path
+          required: true
+          description: UUID of the task to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user or task doesn't belong to user
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+  /api/{user_id}/tasks/{task_id}/complete:
+    patch:
+      summary: Toggle task completion status
+      description: Toggle the completion status of a specific task for the specified user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose task to update
+          schema:
+            type: string
+            format: uuid
+        - name: task_id
+          in: path
+          required: true
+          description: UUID of the task to toggle completion status
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task completion status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - user_id doesn't match authenticated user or task doesn't belong to user
+        '404':
+          description: Task not found
+      security:
+        - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Todo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the task
+        user_id:
+          type: string
+          format: uuid
+          description: ID of the user who owns the task
+        project_id:
+          type: string
+          format: uuid
+          description: ID of the project this task belongs to (optional)
+          nullable: true
+        title:
+          type: string
+          maxLength: 200
+          description: Task title
+        description:
+          type: string
+          description: Detailed task description
+          nullable: true
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+          default: pending
+          description: Current status of the task
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          default: medium
+          description: Task priority level
+        due_date:
+          type: string
+          format: date-time
+          description: Deadline for the task
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          description: When the task was completed
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: When the task was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the task was last updated
+      required:
+        - id
+        - user_id
+        - title
+        - status
+        - priority
+        - created_at
+        - updated_at
+
+    CreateTodoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title
+        description:
+          type: string
+          description: Detailed task description
+          nullable: true
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+          default: pending
+          description: Initial status of the task
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          default: medium
+          description: Task priority level
+        due_date:
+          type: string
+          format: date-time
+          description: Deadline for the task
+          nullable: true
+        project_id:
+          type: string
+          format: uuid
+          description: ID of the project this task belongs to
+          nullable: true
+      required:
+        - title
+
+    UpdateTodoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title
+        description:
+          type: string
+          description: Detailed task description
+          nullable: true
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+          description: Updated status of the task
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          description: Updated priority level
+        due_date:
+          type: string
+          format: date-time
+          description: Updated deadline for the task
+          nullable: true
+        project_id:
+          type: string
+          format: uuid
+          description: Updated project ID for the task
+          nullable: true
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Todo'
+        message:
+          type: string
+          example: "Operation completed successfully"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:00:00Z"
+
+    CollectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Todo'
+        message:
+          type: string
+          example: "Retrieved 5 tasks successfully"
+        total:
+          type: integer
+          example: 5
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:00:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Invalid input data provided"
+            details:
+              type: object
+              description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:00:00Z"

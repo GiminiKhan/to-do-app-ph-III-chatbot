@@ -1,35 +1,58 @@
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException, status
 from ..models.user import User
+from ..utils.auth import verify_password, get_password_hash
 from ..core.security import create_access_token
-import uuid
+
 
 class AuthService:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def authenticate_user(self, email: str, password: str):
+    async def authenticate_user(self, email: str, password: str):
         statement = select(User).where(User.email == email)
-        user = self.db.exec(statement).first()
-        if not user or user.hashed_password != password: # Note: In production use hashing
-            raise Exception('Invalid email or password')
+        result = await self.db.execute(statement)
+        user = result.scalar_one_or_none()
 
-        # Create JWT token with user information
-        token_data = {
-            "sub": str(user.id),
-            "email": user.email,
-            "name": user.name
-        }
-        access_token = create_access_token(data=token_data)
+        if not user or not verify_password(password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
-        return {
-            'access_token': access_token,
-            'token_type': 'bearer',
-            'user': user
-        }
-
-    def register_user(self, email: str, name: str, password: str):
-        user = User(email=email, name=name, hashed_password=password)
-        self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
         return user
+
+    async def register_user(self, email: str, name: str, password: str):
+        # Check if user already exists
+        existing_user = await self.get_user_by_email(email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+        # Hash the password
+        hashed_password = get_password_hash(password)
+
+        # Create new user
+        user = User(email=email, name=name, hashed_password=hashed_password)
+        self.db.add(user)
+
+        try:
+            await self.db.commit()
+            await self.db.refresh(user)
+            return user
+        except IntegrityError:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+    async def get_user_by_email(self, email: str):
+        statement = select(User).where(User.email == email)
+        result = await self.db.execute(statement)
+        return result.scalar_one_or_none()

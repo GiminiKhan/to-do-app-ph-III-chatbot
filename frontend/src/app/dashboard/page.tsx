@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("All"); // Added priority filter state
+  const [sortBy, setSortBy] = useState("Newest"); // Added sort by state
   const [newTask, setNewTask] = useState({ title: "", description: "", priority: "Medium" });
   const [editingTask, setEditingTask] = useState(null);
   const [editTaskData, setEditTaskData] = useState({ title: "", description: "", priority: "Medium" });
@@ -35,7 +36,13 @@ export default function Dashboard() {
       const userId = tokenPayload?.sub || "";
 
       const res = await fetch(`http://127.0.0.1:8000/api/${userId}/tasks`, { headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" } });
-      if (res.ok) setTasks(await res.json());
+      if (res.ok) {
+        const responseData = await res.json();
+        // Extract tasks from the standardized response format
+        setTasks(Array.isArray(responseData.data) ? responseData.data : []);
+      } else {
+        setTasks([]); // Set to empty array on error
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -50,7 +57,7 @@ export default function Dashboard() {
       const userId = tokenPayload?.sub || "";
 
       const res = await fetch(`http://127.0.0.1:8000/api/${userId}/tasks`, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ title: newTask.title, description: newTask.description, priority: newTask.priority.toLowerCase() }) });
-      if (res.ok) { setShowModal(false); fetchTasks(); setNewTask({title:"", description:"", priority:"Medium"}); }
+      if (res.ok) { setShowModal(false); fetchTasks(); setNewTask({title:"", description:"", priority:"Medium"}); } else { alert("Error saving task"); }
     } catch (err) { alert("Error saving task"); }
   };
 
@@ -60,8 +67,12 @@ export default function Dashboard() {
     const tokenPayload = decodeToken(token);
     const userId = tokenPayload?.sub || "";
 
-    await fetch(`http://127.0.0.1:8000/api/${userId}/tasks/${id}`, { method: "DELETE", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" } });
-    fetchTasks();
+    const res = await fetch(`http://127.0.0.1:8000/api/${userId}/tasks/${id}`, { method: "DELETE", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" } });
+    if (res.ok) {
+      fetchTasks();
+    } else {
+      console.error('Failed to delete task');
+    }
   };
 
   const toggleTaskCompletion = async (task) => {
@@ -168,16 +179,43 @@ export default function Dashboard() {
                 <option value="Low">Low</option>
               </select>
             </div>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full sm:w-auto px-4 py-3 rounded-xl border text-black outline-none appearance-none bg-white"
+              >
+                <option value="Newest">Newest</option>
+                <option value="Priority">Priority</option>
+              </select>
+            </div>
           </div>
           <button onClick={()=>setShowModal(true)} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg whitespace-nowrap">+ Add Task</button>
         </header>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {tasks.filter(t => {
+          {Array.isArray(tasks) ? [...tasks].filter(t => {
             const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase());
             const matchesPriority = priorityFilter === "All" || t.priority.toLowerCase() === priorityFilter.toLowerCase();
             return matchesSearch && matchesPriority;
+          }).sort((a, b) => {
+            if (sortBy === "Newest") {
+              // Sort by creation date (assuming created_at field exists and is in ISO format)
+              return new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0);
+            } else if (sortBy === "Priority") {
+              // Define priority order: High > Medium > Low > Others
+              const priorityOrder = { "high": 3, "medium": 2, "low": 1 };
+              const aPriorityValue = priorityOrder[a.priority.toLowerCase()] || 0;
+              const bPriorityValue = priorityOrder[b.priority.toLowerCase()] || 0;
+
+              // If priorities are the same, sort by creation date
+              if (aPriorityValue === bPriorityValue) {
+                return new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0);
+              }
+              return bPriorityValue - aPriorityValue; // Higher priority first
+            }
+            return 0;
           }).map(task => (
-            <div key={task.id} className={`bg-white p-6 rounded-3xl shadow-sm border-l-4 ${task.completed ? 'border-green-500 bg-green-50' : 'border-indigo-500'} hover:shadow-md`}>
+            <div key={task.id} className={`bg-white p-6 rounded-3xl shadow-sm border-l-4 ${task.status === 'completed' ? 'border-green-500 bg-green-50' : 'border-indigo-500'} hover:shadow-md`}>
               {editingTask === task.id ? (
                 // Editing mode
                 <>
@@ -212,13 +250,13 @@ export default function Dashboard() {
                     type="text"
                     value={editTaskData.title}
                     onChange={(e) => setEditTaskData({...editTaskData, title: e.target.value})}
-                    className={`w-full text-lg font-bold mb-2 p-1 border-b ${task.completed ? 'line-through text-gray-500' : 'text-black'}`}
+                    className={`w-full text-lg font-bold mb-2 p-1 border-b ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-black'}`}
                     autoFocus
                   />
                   <textarea
                     value={editTaskData.description}
                     onChange={(e) => setEditTaskData({...editTaskData, description: e.target.value})}
-                    className={`w-full text-sm p-1 border-b ${task.completed ? 'line-through text-gray-400' : 'text-slate-500'}`}
+                    className={`w-full text-sm p-1 border-b ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-slate-500'}`}
                     rows={3}
                   />
                 </>
@@ -226,8 +264,8 @@ export default function Dashboard() {
                 // Display mode
                 <>
                   <div className="flex justify-between mb-4 text-[10px] font-bold uppercase">
-                    <span className={task.completed ? 'text-green-600' : 'text-indigo-400'}>
-                      {task.priority} {task.completed ? '(COMPLETED)' : ''}
+                    <span className={task.status === 'completed' ? 'text-green-600' : 'text-indigo-400'}>
+                      {task.priority} {task.status === 'completed' ? '(COMPLETED)' : ''}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
@@ -240,9 +278,9 @@ export default function Dashboard() {
                       <button
                         onClick={() => toggleTaskCompletion(task)}
                         className="focus:outline-none"
-                        aria-label={task.completed ? "Mark as incomplete" : "Mark as complete"}
+                        aria-label={task.status === 'completed' ? "Mark as incomplete" : "Mark as complete"}
                       >
-                        {task.completed ? (
+                        {task.status === 'completed' ? (
                           <CheckCircle size={18} className="text-green-600" />
                         ) : (
                           <Circle size={18} className="text-gray-400 hover:text-indigo-600" />
@@ -251,16 +289,16 @@ export default function Dashboard() {
                       <Trash2 className="cursor-pointer hover:text-rose-500" size={18} onClick={()=>deleteTodo(task.id)}/>
                     </div>
                   </div>
-                  <h3 className={`text-lg font-bold ${task.completed ? 'line-through text-gray-500' : 'text-black'}`}>
+                  <h3 className={`text-lg font-bold ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-black'}`}>
                     {task.title}
                   </h3>
-                  <p className={`${task.completed ? 'line-through text-gray-400' : 'text-slate-500'} text-sm`}>
+                  <p className={`${task.status === 'completed' ? 'line-through text-gray-400' : 'text-slate-500'} text-sm`}>
                     {task.description}
                   </p>
                 </>
               )}
             </div>
-          ))}
+          )) : []}
         </div>
       </main>
       {showModal && (

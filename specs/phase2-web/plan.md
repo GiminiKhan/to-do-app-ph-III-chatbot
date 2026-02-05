@@ -24,12 +24,12 @@ The application follows a modern full-stack architecture with a clear separation
 ## 2. Technology Stack Decisions
 
 ### 2.1 Frontend Stack
-- **Framework**: Next.js 14+ with App Router
-  - Reason: Excellent SSR/SSG capabilities, built-in optimization
+- **Framework**: Next.js 15+ with App Router
+  - Reason: Excellent SSR/SSG capabilities, built-in optimization, aligned with constitution requirement
 - **Language**: TypeScript
   - Reason: Type safety, better developer experience
-- **Styling**: Tailwind CSS
-  - Reason: Rapid UI development, utility-first approach
+- **Styling**: Tailwind CSS with Indigo/Slate theme
+  - Reason: Rapid UI development, utility-first approach, aligned with constitution requirement for modern attractive UI
 - **State Management**: React Context + Custom Hooks
   - Reason: Lightweight, sufficient for application complexity
 
@@ -135,113 +135,40 @@ Better Auth Users (1) ─────── (N) To-Dos
 
 ### 4.2 Table Specifications
 
+The complete database schema is defined in the shared [database_schema.md](./database_schema.md) document to eliminate duplication between specification and plan documents.
+
 #### Better Auth Managed Tables
+Reference the shared schema document for detailed table definitions.
 
-##### Better Auth Users Table
-```sql
--- This table is managed by Better Auth
-CREATE TABLE better_auth_users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    name VARCHAR(255),
-    username VARCHAR(50) UNIQUE,
-    locale VARCHAR(10),
-    image TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-##### Better Auth Sessions Table
-```sql
--- This table is managed by Better Auth
-CREATE TABLE better_auth_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES better_auth_users(id) ON DELETE CASCADE,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-CREATE INDEX idx_sessions_user_id ON better_auth_sessions(user_id);
-CREATE INDEX idx_sessions_expires_at ON better_auth_sessions(expires_at);
-```
-
-##### Better Auth Accounts Table
-```sql
--- This table is managed by Better Auth
-CREATE TABLE better_auth_accounts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES better_auth_users(id) ON DELETE CASCADE,
-    account_type VARCHAR(50) NOT NULL,
-    provider_id VARCHAR(100) NOT NULL,
-    provider_account_id VARCHAR(255) NOT NULL,
-    refresh_token TEXT,
-    access_token TEXT,
-    expires_at INTEGER,
-    token_type VARCHAR(50),
-    scope VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-CREATE INDEX idx_accounts_user_id ON better_auth_accounts(user_id);
-CREATE INDEX idx_accounts_provider ON better_auth_accounts(provider_id, provider_account_id);
-```
-
-##### Better Auth Verification Table
-```sql
--- This table is managed by Better Auth
-CREATE TABLE better_auth_verification (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    identifier VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-CREATE INDEX idx_verification_identifier_value ON better_auth_verification(identifier, value);
-CREATE INDEX idx_verification_expires_at ON better_auth_verification(expires_at);
-```
-
-#### Projects Table
-```sql
-CREATE TABLE projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES better_auth_users(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    color VARCHAR(7) DEFAULT '#000000',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-CREATE INDEX idx_projects_user_id ON projects(user_id);
-```
-
-#### To-Dos Table
-```sql
-CREATE TABLE todos (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES better_auth_users(id) ON DELETE CASCADE,
-    project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    status todo_status_enum DEFAULT 'pending',
-    priority todo_priority_enum DEFAULT 'medium',
-    due_date TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-CREATE INDEX idx_todos_user_id ON todos(user_id);
-CREATE INDEX idx_todos_project_id ON todos(project_id);
-CREATE INDEX idx_todos_status ON todos(status);
-CREATE INDEX idx_todos_due_date ON todos(due_date);
-```
+#### Application Tables
+Reference the shared schema document for detailed table definitions including Projects and To-Dos tables.
 
 ### 4.3 Database Enumerations
 ```sql
 CREATE TYPE todo_status_enum AS ENUM ('pending', 'in_progress', 'completed');
 CREATE TYPE todo_priority_enum AS ENUM ('low', 'medium', 'high', 'urgent');
 ```
+
+### 4.4 Database Indexing Strategy
+The following indexes will be created to optimize query performance:
+
+#### To-Dos Table Indexes:
+- `idx_todos_user_id`: Index on user_id for efficient user-based queries (critical for user isolation)
+- `idx_todos_project_id`: Index on project_id for efficient project-based queries
+- `idx_todos_status`: Index on status for filtering by status
+- `idx_todos_priority`: Index on priority for filtering by priority
+- `idx_todos_due_date`: Index on due_date for deadline-based queries
+- `idx_todos_created_at`: Index on created_at for chronological ordering
+- `idx_todos_updated_at`: Index on updated_at for change tracking
+
+#### Projects Table Indexes:
+- `idx_projects_user_id`: Index on user_id for efficient user-based queries (critical for user isolation)
+- `idx_projects_name`: Index on name for efficient name-based searches
+- `idx_projects_created_at`: Index on created_at for chronological ordering
+
+#### Composite Indexes (as needed):
+- `idx_todos_user_status`: Composite index on (user_id, status) for common filtered queries
+- `idx_todos_user_priority`: Composite index on (user_id, priority) for priority-based filtering
 
 ## 5. API Design
 
@@ -262,23 +189,23 @@ POST /api/auth/oauth/:provider - OAuth provider login (Google, GitHub, etc.)
 
 ### 5.2 To-Do API
 ```
-GET    /api/v1/todos
-POST   /api/v1/todos
-GET    /api/v1/todos/{id}
-PUT    /api/v1/todos/{id}
-PATCH  /api/v1/todos/{id}/complete
-DELETE /api/v1/todos/{id}
-GET    /api/v1/todos?status={status}&priority={priority}&project_id={project_id}
+GET    /api/{user_id}/tasks
+POST   /api/{user_id}/tasks
+GET    /api/{user_id}/tasks/{id}
+PUT    /api/{user_id}/tasks/{id}
+PATCH  /api/{user_id}/tasks/{id}/complete
+DELETE /api/{user_id}/tasks/{id}
+GET    /api/{user_id}/tasks?status={status}&priority={priority}&project_id={project_id}
 ```
 
 ### 5.3 Project API
 ```
-GET    /api/v1/projects
-POST   /api/v1/projects
-GET    /api/v1/projects/{id}
-PUT    /api/v1/projects/{id}
-DELETE /api/v1/projects/{id}
-GET    /api/v1/projects/{id}/todos
+GET    /api/{user_id}/projects
+POST   /api/{user_id}/projects
+GET    /api/{user_id}/projects/{id}
+PUT    /api/{user_id}/projects/{id}
+DELETE /api/{user_id}/projects/{id}
+GET    /api/{user_id}/projects/{id}/tasks
 ```
 
 ### 5.4 Error Handling

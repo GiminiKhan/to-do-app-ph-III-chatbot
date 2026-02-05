@@ -1,6 +1,5 @@
 """Application configuration."""
 
-import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 
@@ -8,22 +7,30 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings."""
 
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://username:password@localhost:5432/todo_db")
+    # Database - Will be read from environment variables
+    DATABASE_URL: str
 
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+    SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Better Auth (placeholder - actual integration may differ)
-    BETTER_AUTH_SECRET: Optional[str] = os.getenv("BETTER_AUTH_SECRET")
+    BETTER_AUTH_SECRET: Optional[str] = None
+    BETTER_AUTH_URL: str = "http://localhost:8000/api/auth"
+
+    # Application settings
+    DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
+
+    # Server configuration
+    HOST: str = "127.0.0.1"
+    PORT: int = 8000
 
     # CORS
-    BACKEND_CORS_ORIGINS: str = os.getenv("BACKEND_CORS_ORIGINS", "*")
+    BACKEND_CORS_ORIGINS: str = "*"  # Comma-separated origins or "*" for all
 
-    class Config:
-        env_file = ".env"
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

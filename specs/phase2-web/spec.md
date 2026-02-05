@@ -37,8 +37,11 @@ Transform the existing to-do application into a full-stack web application using
 - Update to-do items (title, description, status, priority, due date)
 - Delete to-do items
 - Mark to-do items as complete/incomplete
-- Filter and sort to-do items by various criteria (status, priority, due date)
-- Search functionality for to-do items
+- Filter to-do items by various criteria (status, priority, due date, project)
+- Sort to-do items by various criteria (status, priority, due date, creation date)
+- Search functionality for to-do items by title, description, and tags
+- Set reminders for to-do items with due dates
+- Add tags to to-do items for better organization
 
 ### 3.3 Task Organization
 - Categorize to-do items into projects/lists
@@ -73,7 +76,7 @@ Transform the existing to-do application into a full-stack web application using
 ## 5. User Interface Requirements
 
 ### 5.1 Design System
-- Consistent design language using Tailwind CSS
+- Consistent design language using Tailwind CSS with Indigo/Slate theme as per constitution
 - Responsive layout supporting mobile, tablet, and desktop
 - Dark/light mode support
 - Accessible color contrast and typography
@@ -103,88 +106,34 @@ Transform the existing to-do application into a full-stack web application using
 - POST /api/auth/oauth/:provider - OAuth provider login (Google, GitHub, etc.)
 
 ### 6.2 To-Do Endpoints
-- GET /api/todos - Get all to-do items for user
-- POST /api/todos - Create new to-do item
-- GET /api/todos/{id} - Get specific to-do item
-- PUT /api/todos/{id} - Update to-do item
-- DELETE /api/todos/{id} - Delete to-do item
-- PATCH /api/todos/{id}/complete - Mark to-do as complete/incomplete
+- GET /api/{user_id}/tasks - Get all to-do items for user
+- POST /api/{user_id}/tasks - Create new to-do item
+- GET /api/{user_id}/tasks/{id} - Get specific to-do item
+- PUT /api/{user_id}/tasks/{id} - Update to-do item
+- DELETE /api/{user_id}/tasks/{id} - Delete to-do item
+- PATCH /api/{user_id}/tasks/{id}/complete - Mark to-do as complete/incomplete
 
 ### 6.3 Project Endpoints
-- GET /api/projects - Get all projects for user
-- POST /api/projects - Create new project
-- GET /api/projects/{id} - Get specific project
-- PUT /api/projects/{id} - Update project
-- DELETE /api/projects/{id} - Delete project
+- GET /api/{user_id}/projects - Get all projects for user
+- POST /api/{user_id}/projects - Create new project
+- GET /api/{user_id}/projects/{id} - Get specific project
+- PUT /api/{user_id}/projects/{id} - Update project
+- DELETE /api/{user_id}/projects/{id} - Delete project
+- GET /api/{user_id}/projects/{id}/tasks - Get all tasks for a specific project
 
 ## 7. Database Schema
 
-### 7.1 Better Auth Tables
+The complete database schema is defined in the shared [database_schema.md](./database_schema.md) document to eliminate duplication between specification and plan documents.
 
-#### 7.1.1 User Table (Better Auth managed)
-- id (UUID, primary key)
-- email (VARCHAR, unique, not null)
-- email_verified (BOOLEAN, default false)
-- name (VARCHAR)
-- username (VARCHAR, unique)
-- locale (VARCHAR)
-- image (TEXT)
-- created_at (TIMESTAMP, default now)
-- updated_at (TIMESTAMP, default now)
+### 7.1 Better Auth Tables (Managed by Better Auth)
+Reference the shared schema document for detailed table definitions.
 
-#### 7.1.2 Session Table (Better Auth managed)
-- id (UUID, primary key)
-- user_id (UUID, foreign key to users, not null)
-- expires_at (TIMESTAMP, not null)
-- created_at (TIMESTAMP, default now)
-- updated_at (TIMESTAMP, default now)
-
-#### 7.1.3 Account Table (Better Auth managed)
-- id (UUID, primary key)
-- user_id (UUID, foreign key to users, not null)
-- account_type (VARCHAR, not null)
-- provider_id (VARCHAR, not null)
-- provider_account_id (VARCHAR, not null)
-- refresh_token (TEXT)
-- access_token (TEXT)
-- expires_at (INTEGER)
-- token_type (VARCHAR)
-- scope (VARCHAR)
-- created_at (TIMESTAMP, default now)
-- updated_at (TIMESTAMP, default now)
-
-#### 7.1.4 Verification Table (Better Auth managed)
-- id (UUID, primary key)
-- identifier (VARCHAR, not null)
-- value (VARCHAR, not null)
-- expires_at (TIMESTAMP, not null)
-- created_at (TIMESTAMP, default now)
-
-### 7.2 Projects Table
-- id (UUID, primary key)
-- user_id (UUID, foreign key to better_auth_users.id)
-- name (VARCHAR, not null)
-- description (TEXT)
-- color (VARCHAR, default '#000000')
-- created_at (TIMESTAMP, default now)
-- updated_at (TIMESTAMP, default now)
-
-### 7.3 To-Dos Table
-- id (UUID, primary key)
-- user_id (UUID, foreign key to better_auth_users.id)
-- project_id (UUID, foreign key to projects)
-- title (VARCHAR, not null)
-- description (TEXT)
-- status (ENUM: 'pending', 'in_progress', 'completed', default 'pending')
-- priority (ENUM: 'low', 'medium', 'high', 'urgent', default 'medium')
-- due_date (TIMESTAMP)
-- completed_at (TIMESTAMP)
-- created_at (TIMESTAMP, default now)
-- updated_at (TIMESTAMP, default now)
+### 7.2 Application Tables
+Reference the shared schema document for detailed table definitions including Projects and To-Dos tables.
 
 ## 8. Technology Stack
-- Frontend: Next.js 14+, React 18+, TypeScript
-- Styling: Tailwind CSS
+- Frontend: Next.js 15+ App Router, React 18+, TypeScript
+- Styling: Tailwind CSS with Indigo/Slate theme
 - Backend: FastAPI, Python 3.9+
 - Database: Neon PostgreSQL (PostgreSQL 14+)
 - Authentication: Better Auth (with JWT tokens)
