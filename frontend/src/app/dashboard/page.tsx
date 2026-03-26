@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Search, Plus, Trash2, LogOut, CheckCircle, Circle, Pencil } from "lucide-react";
+import { Sidebar } from '@/components/layouts/sidebar';
 
 // Helper function to decode JWT token
 const decodeToken = (token) => {

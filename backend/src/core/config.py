@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: str = "*"  # Comma-separated origins or "*" for all
 
+    # OpenAI Configuration
+    OPENAI_API_KEY: Optional[str] = None
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

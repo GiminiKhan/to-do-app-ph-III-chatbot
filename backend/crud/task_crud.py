@@ -1,1 +1,34 @@
-from sqlmodel import Session, select & echo from backend.models.task_model import Task & echo. & echo def create_task(session: Session, task_data: Task): & echo     session.add(task_data) & echo     session.commit() & echo     session.refresh(task_data) & echo     return task_data & echo. & echo def get_tasks(session: Session): & echo     return session.exec(select(Task)).all() & echo. & echo def delete_task(session: Session, task_id: int): & echo     task = session.get(Task, task_id) & echo     if task: & echo         session.delete(task) & echo         session.commit() & echo     return task
+from sqlmodel import Session, select
+from backend.models.task_model import Task
+
+def create_task(session: Session, task_data: Task):
+    session.add(task_data)
+    session.commit()
+    session.refresh(task_data)
+    return task_data
+
+def get_tasks(session: Session):
+    return session.exec(select(Task)).all()
+
+def delete_task(session: Session, task_id: int):
+    task = session.get(Task, task_id)
+    if task:
+        session.delete(task)
+        session.commit()
+    return task
+
+# MISSING FUNCTION: update_task function add kiya
+def update_task(session: Session, task_id: int, title: str = None, description: str = None):
+    task = session.get(Task, task_id)
+    if not task:
+        return None
+    
+    if title:
+        task.title = title
+    if description:
+        task.description = description
+        
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task

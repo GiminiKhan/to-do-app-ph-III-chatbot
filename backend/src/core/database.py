@@ -1,11 +1,15 @@
 from sqlmodel import SQLModel, create_engine, Session
+from sqlalchemy import create_engine as sync_create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import asynccontextmanager
 import os
 import dotenv
 from fastapi import Depends
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+# Create declarative base for SQLAlchemy models
+Base = declarative_base()
 
 # Import settings from centralized config
 from .config import settings
@@ -86,6 +90,11 @@ def create_db_and_tables():
     """Create database tables - for sync operations"""
     from ..models.user import User
     from ..models.todo import Todo
+    from ..models.project import Project
+    from ..models.message import Message
+    from ..models.settings import UserSettings
+    # Ensure all models are imported before creating tables
+    _ = [User, Todo, Project, Message, UserSettings]  # This ensures all models are registered
     SQLModel.metadata.create_all(sync_engine)
 
 
